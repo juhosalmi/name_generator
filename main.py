@@ -310,6 +310,8 @@ def main():
                        help='Show model statistics')
     parser.add_argument('--start', type=str, default='',
                        help='Starting string for generated names (e.g., "ju" for names starting with "ju")')
+    parser.add_argument('--allow-duplicates', action='store_true',
+                       help='Allow generating names that already exist in the training data')
     
     args = parser.parse_args()
     
@@ -369,11 +371,12 @@ def main():
         print()
     
     # Display generation info
+    duplicate_info = " (including training data)" if args.allow_duplicates else ""
     if args.start:
-        print(f"\nGenerating {args.count} names starting with '{args.start}':")
+        print(f"\nGenerating {args.count} names starting with '{args.start}'{duplicate_info}:")
         print("-" * 50)
     else:
-        print(f"\nGenerating {args.count} names:")
+        print(f"\nGenerating {args.count} names{duplicate_info}:")
         print("-" * 40)
     
     # Generate names
@@ -388,8 +391,10 @@ def main():
                 min_length=args.min_length,
                 start_with=args.start
             )
-            if name and name not in all_names:  # Avoid duplicating training data
-                generated_names.add(name)
+            if name:
+                # Check if we should allow duplicates or not
+                if args.allow_duplicates or name not in all_names:
+                    generated_names.add(name)
         except ValueError as e:
             print(f"Error: {e}")
             break
