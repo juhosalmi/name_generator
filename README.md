@@ -1,61 +1,81 @@
-# Finnish Name Generator 🇫🇮
+# Finnish & Swedish Name Generator 🇫🇮🇸🇪
 
-A Python application that uses Markov chains to generate authentic-sounding Finnish names for children.
+A Python application that uses Markov chains to generate authentic-sounding Finnish and Swedish names for children, with prevalence-based weighting from real name databases.
 
 ## How It Works
 
-The application uses Markov chains to analyze patterns in existing Finnish names and generate new names that follow similar phonetic and structural patterns. A Markov chain predicts the next character in a name based on the previous N characters (where N is the "order" of the chain).
+The application uses Markov chains to analyze patterns in existing Finnish and Swedish names and generate new names that follow similar phonetic and structural patterns. A Markov chain predicts the next character in a name based on the previous N characters (where N is the "order" of the chain).
+
+The system loads real name data from CSV files containing names and their prevalence (popularity) in the respective countries. Names with higher prevalence have proportionally more influence on the generation patterns, making the output more realistic and culturally authentic.
 
 ## Features
 
-- Generate both boys' and girls' names
-- Configurable Markov chain order for different creativity levels
-- Adjustable name length constraints
-- Statistics about the training data
-- Avoids generating exact duplicates of training names
+- **Multi-language Support**: Generate Finnish or Swedish names
+- **Gender Selection**: Generate boys', girls', or both genders
+- **Prevalence Weighting**: Real name popularity data influences generation patterns
+- **Starting String**: Generate names that start with specific letters or syllables
+- **Configurable Markov Chain**: Adjustable order for different creativity levels
+- **Length Constraints**: Set minimum and maximum name lengths
+- **Rich Statistics**: View detailed information about training data
+- **Duplicate Avoidance**: Prevents generating exact copies of training names
+- **Character Support**: Full support for Nordic characters (ä, ö, å)
 
 ## Usage
 
 ### Basic Usage
 
 ```bash
-# Generate 10 names (both boys and girls)
-python main.py
+# Generate 10 Finnish names (both boys and girls)
+python3 main.py
 
-# Generate only girls' names
-python main.py --gender girls
+# Generate Finnish girls' names
+python3 main.py --gender girls
 
-# Generate only boys' names  
-python main.py --gender boys
+# Generate Swedish boys' names  
+python3 main.py --language swedish --gender boys
 
-# Generate 20 names
-python main.py --count 20
+# Generate 20 Finnish names
+python3 main.py --count 20
+
+# Generate Swedish names starting with "an"
+python3 main.py --language swedish --start an --count 5
 ```
 
 ### Advanced Options
 
 ```bash
 # Use higher order chain for more realistic names (less creative)
-python main.py --order 3
+python3 main.py --order 3
 
 # Use lower order chain for more creative names (less realistic)
-python main.py --order 1
+python3 main.py --order 1
 
 # Set name length constraints
-python main.py --min-length 4 --max-length 8
+python3 main.py --min-length 4 --max-length 8
 
-# Show model statistics
-python main.py --stats
+# Show detailed model statistics
+python3 main.py --stats
+
+# Generate names starting with specific letters
+python3 main.py --start "ju" --count 8
+
+# Combine multiple options
+python3 main.py --language swedish --gender girls --start "ma" --count 5 --stats
 ```
 
 ### Full Options
 
 ```
-usage: main.py [-h] [--gender {boys,girls,both}] [--count COUNT] [--order ORDER]
-               [--min-length MIN_LENGTH] [--max-length MAX_LENGTH] [--stats]
+usage: main.py [-h] [--language {finnish,swedish}] [--gender {boys,girls,both}] 
+               [--count COUNT] [--order ORDER] [--min-length MIN_LENGTH] 
+               [--max-length MAX_LENGTH] [--stats] [--start START]
+
+Generate Finnish or Swedish names using Markov chains
 
 optional arguments:
   -h, --help            show this help message and exit
+  --language {finnish,swedish}
+                        Language of names to generate (default: finnish)
   --gender {boys,girls,both}
                         Gender of names to generate (default: both)
   --count COUNT         Number of names to generate (default: 10)
@@ -65,23 +85,44 @@ optional arguments:
   --max-length MAX_LENGTH
                         Maximum name length (default: 12)
   --stats               Show model statistics
+  --start START         Starting string for generated names (e.g., "ju")
 ```
 
 ## Examples
 
 ### Sample Generated Names
 
-**Boys:**
-- Kalle
-- Miilo
-- Veelis
-- Tommi
+**Finnish Boys:**
+- Juhannismo, Juhari, Jukki, Juuti (starting with "ju")
+- Aaro, Markko, Ville, Hannu
 
-**Girls:**
-- Liina
-- Emmi
-- Villia
-- Aura
+**Finnish Girls:**
+- Aada, Emilia, Helmi, Venla
+- Aarkiena, Anneti, Almani (starting with "a")
+
+**Swedish Boys:**
+- Alexand, Alexandertin, Alexanus (starting with "alex")
+- Erik, Gustaf, Magnus, Nils
+
+**Swedish Girls:**
+- Anittargarin, Ankaa, Annelisabeth (starting with "an")
+- Astrid, Ingrid, Margareta, Sofia
+
+### Sample Statistics Output
+
+```
+🇫🇮 Finnish Name Generator using Markov Chains
+============================================================
+Loaded 7209 Finnish boys names
+
+Model Statistics:
+  Training names: 7102
+  Total prevalence weight: 2,643,974
+  Average prevalence: 366.8
+  Unique contexts: 610
+  Chain order: 2
+  Average name length: 6.3
+```
 
 ## Technical Details
 
@@ -90,9 +131,17 @@ optional arguments:
   - Order 2: Good balance (default)
   - Order 3+: More realistic but less creative
   
-- **Training Data**: Uses a curated list of authentic Finnish names
-- **Character Handling**: Supports Finnish characters (ä, ö, å)
-- **Name Validation**: Ensures generated names follow Finnish naming patterns
+- **Training Data**: Uses real name databases from CSV files
+  - Finnish: 7,200+ male names, 9,500+ female names
+  - Swedish: 19,400+ male names, 22,000+ female names
+  
+- **Prevalence Weighting**: Names with higher popularity have more influence
+  - A name with prevalence 1000 has 10x more impact than prevalence 100
+  - Ensures generated names follow patterns of common names
+  
+- **Character Support**: Full Nordic character support (ä, ö, å)
+- **Starting String**: Generate names beginning with specific patterns
+- **Context Handling**: Smart fallback for missing character combinations
 
 ## Requirements
 
@@ -102,18 +151,33 @@ optional arguments:
 ## File Structure
 
 ```
-finnish_name_generator/
-├── main.py           # Main application
-├── requirements.txt  # Dependencies (empty - uses stdlib only)
-└── README.md        # This file
+name_generator/
+├── main.py              # Main application
+├── requirements.txt     # Dependencies (empty - uses stdlib only)
+├── README.md           # This file
+└── names/              # Name databases
+    ├── finnish_female.csv   # Finnish female names with prevalence
+    ├── finnish_male.csv     # Finnish male names with prevalence
+    ├── swedish_female.csv   # Swedish female names with prevalence
+    └── swedish_male.csv     # Swedish male names with prevalence
 ```
+
+## Data Sources
+
+The name databases include authentic names with their popularity/prevalence data:
+
+- **Finnish Names**: Based on official Finnish name registry data
+- **Swedish Names**: Based on official Swedish name registry data
+
+Each CSV file contains names in the first column and prevalence counts in the second column, representing how many people have that name in the respective country.
 
 ## Future Enhancements
 
 Potential improvements could include:
-- Loading names from external files or databases
+- Additional Nordic languages (Norwegian, Danish, Icelandic)
 - Web interface for easier use
-- Regional Finnish name variations
-- Name meaning generation
+- Regional name variations and dialects
+- Name meaning and etymology generation
 - Export generated names to files
+- Advanced filtering options (popularity ranges, cultural regions)
 - Machine learning evaluation metrics
