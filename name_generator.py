@@ -469,7 +469,7 @@ def main():
         print(line)
     
     if len(generated_names) < args.count:
-        print(f"\nNote: Only generated {len(generated_names)} unique names after {max_attempts} attempts.")
+        print(f"\nNote: Only generated {len(generated_names)} names after {max_attempts} attempts.")
 
 
 if __name__ == "__main__":
