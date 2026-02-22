@@ -14,6 +14,7 @@ The system loads real name data from CSV files containing names and their preval
 - **Gender Selection**: Generate boys', girls', or both genders
 - **Prevalence Weighting**: Real name popularity data influences generation patterns
 - **Starting String**: Generate names that start with specific letters or syllables
+- **Ending String**: Generate names that end with specific letters or syllables
 - **Configurable Markov Chain**: Adjustable order for different creativity levels
 - **Length Constraints**: Set minimum and maximum name lengths
 - **Rich Statistics**: View detailed information about training data
@@ -26,49 +27,58 @@ The system loads real name data from CSV files containing names and their preval
 
 ```bash
 # Generate 10 Finnish names (both boys and girls)
-python3 main.py
+python3 name_generator.py
 
 # Generate Finnish girls' names
-python3 main.py --gender girls
+python3 name_generator.py --gender girls
 
 # Generate Swedish boys' names  
-python3 main.py --language swedish --gender boys
+python3 name_generator.py --language swedish --gender boys
 
 # Generate 20 Finnish names
-python3 main.py --count 20
+python3 name_generator.py --count 20
 
 # Generate Swedish names starting with "an"
-python3 main.py --language swedish --start an --count 5
+python3 name_generator.py --language swedish --start an --count 5
+
+# Generate names ending with "o"
+python3 name_generator.py --end o --count 5
 ```
 
 ### Advanced Options
 
 ```bash
 # Use higher order chain for more realistic names (less creative)
-python3 main.py --order 3
+python3 name_generator.py --order 3
 
 # Use lower order chain for more creative names (less realistic)
-python3 main.py --order 1
+python3 name_generator.py --order 1
 
 # Set name length constraints
-python3 main.py --min-length 4 --max-length 8
+python3 name_generator.py --min-length 4 --max-length 8
 
 # Show detailed model statistics
-python3 main.py --stats
+python3 name_generator.py --stats
 
 # Generate names starting with specific letters
-python3 main.py --start "ju" --count 8
+python3 name_generator.py --start "ju" --count 8
+
+# Generate names ending with specific letters
+python3 name_generator.py --end "o" --count 8
+
+# Combine start and end (e.g. names starting with "j" and ending with "o")
+python3 name_generator.py --start j --end o --count 5
 
 # Combine multiple options
-python3 main.py --language swedish --gender girls --start "ma" --count 5 --stats
+python3 name_generator.py --language swedish --gender girls --start "ma" --count 5 --stats
 ```
 
 ### Full Options
 
 ```
-usage: main.py [-h] [--language {finnish,swedish}] [--gender {boys,girls,both}] 
+usage: name_generator.py [-h] [--language {finnish,swedish}] [--gender {boys,girls,both}] 
                [--count COUNT] [--order ORDER] [--min-length MIN_LENGTH] 
-               [--max-length MAX_LENGTH] [--stats] [--start START]
+               [--max-length MAX_LENGTH] [--stats] [--start START] [--end END]
 
 Generate Finnish or Swedish names using Markov chains
 
@@ -86,6 +96,7 @@ optional arguments:
                         Maximum name length (default: 12)
   --stats               Show model statistics
   --start START         Starting string for generated names (e.g., "ju")
+  --end END             Ending string for generated names (e.g., "o")
 ```
 
 ## Examples
@@ -141,6 +152,7 @@ Model Statistics:
   
 - **Character Support**: Full Nordic character support (ä, ö, å)
 - **Starting String**: Generate names beginning with specific patterns
+- **Ending String**: Generate names ending with specific patterns (retries until a matching name is found)
 - **Context Handling**: Smart fallback for missing character combinations
 
 ## Requirements
@@ -152,7 +164,7 @@ Model Statistics:
 
 ```
 name_generator/
-├── main.py              # Main application
+├── name_generator.py              # Main application
 ├── requirements.txt     # Dependencies (empty - uses stdlib only)
 ├── README.md           # This file
 └── names/              # Name databases

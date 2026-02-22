@@ -58,7 +58,7 @@ class MarkovNameGenerator:
                     next_char = padded_name[i + self.order]
                     self.chains[context][next_char] += weight
     
-    def generate(self, max_length: int = 12, min_length: int = 2, start_with: str = '') -> str:
+    def generate(self, max_length: int = 12, min_length: int = 2, start_with: str = '', end_with: str = '') -> str:
         """
         Generate a new name using the trained Markov chain.
         
@@ -66,6 +66,7 @@ class MarkovNameGenerator:
             max_length: Maximum length of generated name
             min_length: Minimum length of generated name
             start_with: Optional string to start the name with
+            end_with: Optional string to end the name with
             
         Returns:
             Generated name
@@ -77,6 +78,11 @@ class MarkovNameGenerator:
         start_with = start_with.lower().strip()
         if start_with and not self._is_valid_name_part(start_with):
             raise ValueError(f"Invalid starting string: '{start_with}'. Must contain only letters.")
+        
+        # Clean and validate the ending string
+        end_with = end_with.lower().strip()
+        if end_with and not self._is_valid_name_part(end_with):
+            raise ValueError(f"Invalid ending string: '{end_with}'. Must contain only letters.")
         
         # If we have a starting string, use it to initialize
         if start_with:
@@ -116,7 +122,7 @@ class MarkovNameGenerator:
                     # Too short, try again if we started with a string
                     if start_with:
                         # Try a different continuation
-                        return self.generate(max_length, min_length, start_with)
+                        return self.generate(max_length, min_length, start_with, end_with)
                     else:
                         # Reset completely
                         context = '^' * self.order
@@ -127,7 +133,11 @@ class MarkovNameGenerator:
             # Update context for next iteration
             context = context[1:] + next_char
         
-        return self._capitalize_name(name) if name else self.generate(max_length, min_length, start_with)
+        result = self._capitalize_name(name) if name else self.generate(max_length, min_length, start_with, end_with)
+        # If we need a specific ending, retry until we get one
+        if result and end_with and not result.lower().endswith(end_with):
+            return self.generate(max_length, min_length, start_with, end_with)
+        return result
     
     def _is_valid_name_part(self, text: str) -> bool:
         """Check if a text part is valid for names (contains only letters)."""
@@ -310,6 +320,8 @@ def main():
                        help='Show model statistics')
     parser.add_argument('--start', type=str, default='',
                        help='Starting string for generated names (e.g., "ju" for names starting with "ju")')
+    parser.add_argument('--end', type=str, default='',
+                       help='Ending string for generated names (e.g., "o" for names ending with "o")')
     parser.add_argument('--allow-duplicates', action='store_true',
                        help='Allow generating names that already exist in the training data')
     
@@ -372,8 +384,13 @@ def main():
     
     # Display generation info
     duplicate_info = " (including training data)" if args.allow_duplicates else ""
+    parts = []
     if args.start:
-        print(f"\nGenerating {args.count} names starting with '{args.start}'{duplicate_info}:")
+        parts.append(f"starting with '{args.start}'")
+    if args.end:
+        parts.append(f"ending with '{args.end}'")
+    if parts:
+        print(f"\nGenerating {args.count} names {', '.join(parts)}{duplicate_info}:")
         print("-" * 50)
     else:
         print(f"\nGenerating {args.count} names{duplicate_info}:")
@@ -389,7 +406,8 @@ def main():
             name = generator.generate(
                 max_length=args.max_length,
                 min_length=args.min_length,
-                start_with=args.start
+                start_with=args.start,
+                end_with=args.end
             )
             if name:
                 # Check if we should allow duplicates or not
