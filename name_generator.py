@@ -304,8 +304,8 @@ def load_names_by_language(language: str, gender: str) -> Dict[str, Tuple[List[s
 def main():
     """Main application entry point."""
     parser = argparse.ArgumentParser(description='Generate Finnish or Swedish names using Markov chains')
-    parser.add_argument('--language', choices=['finnish', 'swedish'], default='finnish',
-                       help='Language of names to generate')
+    parser.add_argument('--language', choices=['finnish', 'swedish', 'both'], default='finnish',
+                       help='Language of names to generate (use "both" for Finnish and Swedish combined)')
     parser.add_argument('--gender', choices=['boys', 'girls', 'both'], default='both',
                        help='Gender of names to generate')
     parser.add_argument('--count', type=int, default=10,
@@ -327,16 +327,30 @@ def main():
     
     args = parser.parse_args()
     
-    # Load the names with prevalence weights
+    # Load the names with prevalence weights (one or both languages)
     try:
-        names_data = load_names_by_language(args.language, args.gender)
+        if args.language == 'both':
+            names_data_fi = load_names_by_language('finnish', args.gender)
+            names_data_sv = load_names_by_language('swedish', args.gender)
+            # Merge: for each gender, combine names and weights from both languages
+            names_data = {}
+            for gender in ['boys', 'girls']:
+                names_fi, weights_fi = names_data_fi.get(gender, ([], []))
+                names_sv, weights_sv = names_data_sv.get(gender, ([], []))
+                names_data[gender] = (names_fi + names_sv, weights_fi + weights_sv)
+        else:
+            names_data = load_names_by_language(args.language, args.gender)
     except Exception as e:
         print(f"Error loading names: {e}")
         return
     
     # Language flags and display
-    language_flag = "🇫🇮" if args.language == "finnish" else "🇸🇪"
-    language_name = args.language.capitalize()
+    if args.language == 'both':
+        language_flag = "🇫🇮🇸🇪"
+        language_name = "Finnish & Swedish"
+    else:
+        language_flag = "🇫🇮" if args.language == "finnish" else "🇸🇪"
+        language_name = args.language.capitalize()
     
     print(f"{language_flag} {language_name} Name Generator using Markov Chains")
     print("=" * 60)

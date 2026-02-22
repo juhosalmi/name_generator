@@ -10,7 +10,7 @@ The system loads real name data from CSV files containing names and their preval
 
 ## Features
 
-- **Multi-language Support**: Generate Finnish or Swedish names
+- **Multi-language Support**: Generate Finnish, Swedish, or both languages combined
 - **Gender Selection**: Generate boys', girls', or both genders
 - **Prevalence Weighting**: Real name popularity data influences generation patterns
 - **Starting String**: Generate names that start with specific letters or syllables
@@ -34,6 +34,9 @@ python3 name_generator.py --gender girls
 
 # Generate Swedish boys' names  
 python3 name_generator.py --language swedish --gender boys
+
+# Generate names using both Finnish and Swedish (blended patterns)
+python3 name_generator.py --language both --count 10
 
 # Generate 20 Finnish names
 python3 name_generator.py --count 20
@@ -84,8 +87,8 @@ Generate Finnish or Swedish names using Markov chains
 
 optional arguments:
   -h, --help            show this help message and exit
-  --language {finnish,swedish}
-                        Language of names to generate (default: finnish)
+  --language {finnish,swedish,both}
+                        Language of names to generate; "both" trains on Finnish and Swedish together (default: finnish)
   --gender {boys,girls,both}
                         Gender of names to generate (default: both)
   --count COUNT         Number of names to generate (default: 10)
