@@ -379,6 +379,30 @@ def main():
     if args.gender == 'both':
         print(f"Total: {total_names} {language_name} names (boys and girls)")
     
+    # Build per-language prevalence lookups (for --allow-duplicates display)
+    finnish_prevalence: Dict[str, int] = {}
+    swedish_prevalence: Dict[str, int] = {}
+    if args.language == 'both':
+        for gender in ['boys', 'girls']:
+            n_fi, w_fi = names_data_fi.get(gender, ([], []))
+            for n, w in zip(n_fi, w_fi):
+                finnish_prevalence[n] = finnish_prevalence.get(n, 0) + w
+            n_sv, w_sv = names_data_sv.get(gender, ([], []))
+            for n, w in zip(n_sv, w_sv):
+                swedish_prevalence[n] = swedish_prevalence.get(n, 0) + w
+    elif args.language == 'finnish':
+        for gender in ['boys', 'girls']:
+            if gender in names_data:
+                n, w = names_data[gender]
+                for name, weight in zip(n, w):
+                    finnish_prevalence[name] = finnish_prevalence.get(name, 0) + weight
+    else:
+        for gender in ['boys', 'girls']:
+            if gender in names_data:
+                n, w = names_data[gender]
+                for name, weight in zip(n, w):
+                    swedish_prevalence[name] = swedish_prevalence.get(name, 0) + weight
+    
     # Create and train the generator with weighted data
     generator = MarkovNameGenerator(order=args.order)
     generator.train(all_names, all_weights)
@@ -433,7 +457,16 @@ def main():
         attempts += 1
     
     for i, name in enumerate(sorted(generated_names), 1):
-        print(f"{i:2d}. {name}")
+        line = f"{i:2d}. {name}"
+        if args.allow_duplicates:
+            parts = []
+            if name in finnish_prevalence:
+                parts.append(f"FI: {finnish_prevalence[name]:,}")
+            if name in swedish_prevalence:
+                parts.append(f"SE: {swedish_prevalence[name]:,}")
+            if parts:
+                line += "  (" + " | ".join(parts) + ")"
+        print(line)
     
     if len(generated_names) < args.count:
         print(f"\nNote: Only generated {len(generated_names)} unique names after {max_attempts} attempts.")
