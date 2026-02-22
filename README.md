@@ -63,25 +63,22 @@ python3 name_generator.py --min-length 4 --max-length 8
 # Show detailed model statistics
 python3 name_generator.py --stats
 
-# Generate names starting with specific letters
-python3 name_generator.py --start "ju" --count 8
+# Generate names starting or ending with specific letters
+python3 name_generator.py --start j --end o
 
-# Generate names ending with specific letters
-python3 name_generator.py --end "o" --count 8
-
-# Combine start and end (e.g. names starting with "j" and ending with "o")
-python3 name_generator.py --start j --end o --count 5
+# Allow names that appear in the training data (default is to exclude them)
+python3 name_generator.py --allow-duplicates
 
 # Combine multiple options
-python3 name_generator.py --language swedish --gender girls --start "ma" --count 5 --stats
+python3 name_generator.py --language swedish --gender girls --start ma --count 5 --stats
 ```
 
 ### Full Options
 
 ```
-usage: name_generator.py [-h] [--language {finnish,swedish}] [--gender {boys,girls,both}] 
+usage: name_generator.py [-h] [--language {finnish,swedish,both}] [--gender {boys,girls,both}] 
                [--count COUNT] [--order ORDER] [--min-length MIN_LENGTH] 
-               [--max-length MAX_LENGTH] [--stats] [--start START] [--end END]
+               [--max-length MAX_LENGTH] [--stats] [--start START] [--end END] [--allow-duplicates]
 
 Generate Finnish or Swedish names using Markov chains
 
@@ -100,6 +97,7 @@ optional arguments:
   --stats               Show model statistics
   --start START         Starting string for generated names (e.g., "ju")
   --end END             Ending string for generated names (e.g., "o")
+  --allow-duplicates    Allow generating names that already exist in the training data
 ```
 
 ## Examples
