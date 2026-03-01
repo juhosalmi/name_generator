@@ -1,5 +1,8 @@
 import argparse
-from typing import Dict, List, Tuple, Set
+import hashlib
+import json
+import os
+from typing import Dict, List, Set, Tuple
 
 from data_loader import load_names_by_language
 from markov_generator import MarkovNameGenerator
@@ -57,7 +60,102 @@ def parse_args() -> argparse.Namespace:
         action="store_true",
         help="Allow generating names that already exist in the training data",
     )
+    parser.add_argument(
+        "--no-cache",
+        action="store_true",
+        help="Disable model caching (always retrain and do not save cache)",
+    )
+    parser.add_argument(
+        "--force-retrain",
+        action="store_true",
+        help="Force retraining and overwrite any existing cached model",
+    )
     return parser.parse_args()
+
+
+def _compute_dataset_signature(
+    language: str,
+    gender: str,
+    names_data: Dict[str, Tuple[List[str], List[int]]],
+) -> str:
+    """
+    Compute a stable signature for the training data used for the model.
+    This is based on the (name, weight) pairs that will be fed into training.
+    """
+    items: List[Tuple[str, int]] = []
+    for g in ["boys", "girls"]:
+        if g in names_data and gender in [g, "both"]:
+            n, w = names_data[g]
+            items.extend(zip(n, w))
+
+    hasher = hashlib.sha256()
+    hasher.update(language.encode("utf-8"))
+    hasher.update(b"|")
+    hasher.update(gender.encode("utf-8"))
+    hasher.update(b"|")
+
+    for name, weight in sorted(items):
+        hasher.update(name.encode("utf-8"))
+        hasher.update(b":")
+        hasher.update(str(weight).encode("ascii"))
+        hasher.update(b";")
+
+    return hasher.hexdigest()
+
+
+def _get_cache_dir() -> str:
+    """Return the directory used for cached Markov models, creating it if needed."""
+    script_dir = os.path.dirname(os.path.abspath(__file__))
+    cache_dir = os.path.join(script_dir, "models")
+    os.makedirs(cache_dir, exist_ok=True)
+    return cache_dir
+
+
+def _get_cache_path(language: str, gender: str, order: int) -> str:
+    """Construct a cache file path for the given configuration."""
+    safe_language = language.replace(os.sep, "_")
+    safe_gender = gender.replace(os.sep, "_")
+    filename = f"markov_{safe_language}_{safe_gender}_order{order}.json"
+    return os.path.join(_get_cache_dir(), filename)
+
+
+def _load_cached_model(
+    cache_path: str, expected_signature: str
+) -> MarkovNameGenerator | None:
+    """
+    Load a cached model if the cache exists, is valid JSON, and matches
+    the expected dataset signature. Returns None on any mismatch or error.
+    """
+    try:
+        with open(cache_path, "r", encoding="utf-8") as f:
+            payload = json.load(f)
+    except (FileNotFoundError, json.JSONDecodeError):
+        return None
+
+    if not isinstance(payload, dict):
+        return None
+
+    stored_signature = payload.get("dataset_signature")
+    model_data = payload.get("model")
+    if stored_signature != expected_signature or not isinstance(model_data, dict):
+        return None
+
+    try:
+        return MarkovNameGenerator.from_dict(model_data)
+    except Exception:
+        return None
+
+
+def _save_cached_model(
+    generator: MarkovNameGenerator, cache_path: str, dataset_signature: str
+) -> None:
+    """Persist a trained model and its dataset signature to disk."""
+    payload = {
+        "dataset_signature": dataset_signature,
+        "model": generator.to_dict(),
+    }
+    with open(cache_path, "w", encoding="utf-8") as f:
+        json.dump(payload, f)
 
 
 def _build_prevalence_lookups(
@@ -154,9 +252,32 @@ def main() -> None:
         args.language, names_data, names_data_fi, names_data_sv
     )
 
-    # Create and train the generator with weighted data.
-    generator = MarkovNameGenerator(order=args.order)
-    generator.train(all_names, all_weights)
+    # Prepare caching configuration.
+    use_cache = not args.no_cache
+    dataset_signature = _compute_dataset_signature(
+        args.language, args.gender, names_data
+    )
+    cache_path = _get_cache_path(args.language, args.gender, args.order)
+
+    generator: MarkovNameGenerator
+
+    if use_cache and not args.force_retrain:
+        cached = _load_cached_model(cache_path, dataset_signature)
+        if cached is not None:
+            generator = cached
+            print(f"\nUsing cached model from {cache_path}")
+        else:
+            generator = MarkovNameGenerator(order=args.order)
+            generator.train(all_names, all_weights)
+            _save_cached_model(generator, cache_path, dataset_signature)
+    elif use_cache and args.force_retrain:
+        generator = MarkovNameGenerator(order=args.order)
+        generator.train(all_names, all_weights)
+        _save_cached_model(generator, cache_path, dataset_signature)
+    else:
+        # Caching disabled: always train a fresh model and do not persist it.
+        generator = MarkovNameGenerator(order=args.order)
+        generator.train(all_names, all_weights)
 
     if args.stats:
         stats = generator.get_stats()

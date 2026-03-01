@@ -1,7 +1,8 @@
+import json
 import random
 import re
-from collections import defaultdict, Counter
-from typing import List, Dict, Optional
+from collections import Counter, defaultdict
+from typing import Dict, List, Optional
 
 
 class MarkovNameGenerator:
@@ -183,4 +184,45 @@ class MarkovNameGenerator:
                 else 0
             ),
         }
+
+    def to_dict(self) -> Dict:
+        """
+        Serialize the model state to a JSON-serializable dictionary.
+        """
+        return {
+            "order": self.order,
+            "names": self.names,
+            "chains": {
+                context: dict(counter) for context, counter in self.chains.items()
+            },
+        }
+
+    @classmethod
+    def from_dict(cls, data: Dict) -> "MarkovNameGenerator":
+        """
+        Reconstruct a MarkovNameGenerator instance from a dictionary
+        produced by to_dict().
+        """
+        order = int(data.get("order", 2))
+        instance = cls(order=order)
+        instance.names = list(data.get("names", []))
+
+        chains_data = data.get("chains", {})
+        instance.chains = defaultdict(Counter)
+        for context, next_chars in chains_data.items():
+            instance.chains[context] = Counter(next_chars)
+
+        return instance
+
+    def save_to_json(self, path: str) -> None:
+        """Save the model state to a JSON file."""
+        with open(path, "w", encoding="utf-8") as f:
+            json.dump(self.to_dict(), f)
+
+    @classmethod
+    def load_from_json(cls, path: str) -> "MarkovNameGenerator":
+        """Load the model state from a JSON file."""
+        with open(path, "r", encoding="utf-8") as f:
+            data = json.load(f)
+        return cls.from_dict(data)
 

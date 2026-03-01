@@ -18,6 +18,7 @@ The system loads real name data from CSV files containing names and their preval
 - **Configurable Markov Chain**: Adjustable order for different creativity levels
 - **Length Constraints**: Set minimum and maximum name lengths
 - **Rich Statistics**: View detailed information about training data
+- **Model Caching**: Reuses trained Markov models between runs for faster startup
 - **Duplicate Avoidance**: Prevents generating exact copies of training names
 - **Character Support**: Full support for Nordic characters (ä, ö, å)
 
@@ -69,6 +70,12 @@ python3 name_generator.py --start j --end o
 # Allow names that appear in the training data (default is to exclude them)
 python3 name_generator.py --allow-duplicates
 
+# Always retrain the model and skip loading/saving cache
+python3 name_generator.py --no-cache
+
+# Force retraining and overwrite any existing cached model
+python3 name_generator.py --force-retrain
+
 # Combine multiple options
 python3 name_generator.py --language swedish --gender girls --start ma --count 5 --stats
 ```
@@ -76,9 +83,10 @@ python3 name_generator.py --language swedish --gender girls --start ma --count 5
 ### Full Options
 
 ```
-usage: name_generator.py [-h] [--language {finnish,swedish,both}] [--gender {boys,girls,both}] 
-               [--count COUNT] [--order ORDER] [--min-length MIN_LENGTH] 
-               [--max-length MAX_LENGTH] [--stats] [--start START] [--end END] [--allow-duplicates]
+usage: name_generator.py [-h] [--language {finnish,swedish,both}] [--gender {boys,girls,both}]
+               [--count COUNT] [--order ORDER] [--min-length MIN_LENGTH]
+               [--max-length MAX_LENGTH] [--stats] [--start START] [--end END]
+               [--allow-duplicates] [--no-cache] [--force-retrain]
 
 Generate Finnish or Swedish names using Markov chains
 
@@ -98,6 +106,8 @@ optional arguments:
   --start START         Starting string for generated names (e.g., "ju")
   --end END             Ending string for generated names (e.g., "o")
   --allow-duplicates    Allow generating names that already exist in the training data
+  --no-cache            Disable model caching (always retrain; do not read/write cache)
+  --force-retrain       Force retraining and overwrite any existing cached model
 ```
 
 ## Examples
@@ -155,6 +165,9 @@ Model Statistics:
 - **Starting String**: Generate names beginning with specific patterns
 - **Ending String**: Generate names ending with specific patterns (retries until a matching name is found)
 - **Context Handling**: Smart fallback for missing character combinations
+- **Model Caching**: Trains a model once per (language, gender, order, dataset) combination
+  and then reuses the cached model on subsequent runs unless `--no-cache` or `--force-retrain`
+  are used
 
 ## Requirements
 
