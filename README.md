@@ -161,18 +161,21 @@ Model Statistics:
 - Python 3.7+
 - No external dependencies (uses only standard library)
 
-## File Structure
+## Project Structure
 
 ```
 name_generator/
-├── name_generator.py              # Main application
-├── requirements.txt     # Dependencies (empty - uses stdlib only)
-├── README.md           # This file
-└── names/              # Name databases
-    ├── finnish_female.csv   # Finnish female names with prevalence
-    ├── finnish_male.csv     # Finnish male names with prevalence
-    ├── swedish_female.csv   # Swedish female names with prevalence
-    └── swedish_male.csv     # Swedish male names with prevalence
+├── name_generator.py      # Thin façade & CLI entry point
+├── markov_generator.py    # Core Markov-chain name generation logic
+├── data_loader.py         # CSV loading & prevalence utilities
+├── cli.py                 # Argument parsing & command-line orchestration
+├── requirements.txt       # Dependencies (empty - uses stdlib only)
+├── README.md              # This file
+└── names/                 # Name databases
+    ├── finnish_female.csv # Finnish female names with prevalence
+    ├── finnish_male.csv   # Finnish male names with prevalence
+    ├── swedish_female.csv # Swedish female names with prevalence
+    └── swedish_male.csv   # Swedish male names with prevalence
 ```
 
 ## Data Sources
