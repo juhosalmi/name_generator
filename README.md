@@ -21,6 +21,8 @@ The system loads real name data from CSV files containing names and their preval
 - **Model Caching**: Reuses trained Markov models between runs for faster startup
 - **Duplicate Avoidance**: Prevents generating exact copies of training names
 - **Character Support**: Full support for Nordic characters (ä, ö, å)
+- **Interactive Reinforcement Learning**: Accept/reject generated names to fine-tune the model
+- **Custom Pretrained Models**: Save and load Markov models as JSON files
 
 ## Usage
 
@@ -78,6 +80,15 @@ python3 name_generator.py --force-retrain
 
 # Combine multiple options
 python3 name_generator.py --language swedish --gender girls --start ma --count 5 --stats
+
+# Enable interactive reinforcement learning with stronger feedback
+python3 name_generator.py --language finnish --gender boys --reinforce --reward 3 --count 20
+
+# Train (or load) and then save a custom pretrained model
+python3 name_generator.py --language finnish --gender boys --count 20 --save-model models/my_fi_boys.json
+
+# Load a custom pretrained model and generate names without retraining
+python3 name_generator.py --load-model models/my_fi_boys.json --count 10
 ```
 
 ### Full Options
@@ -87,6 +98,8 @@ usage: name_generator.py [-h] [--language {finnish,swedish,both}] [--gender {boy
                [--count COUNT] [--order ORDER] [--min-length MIN_LENGTH]
                [--max-length MAX_LENGTH] [--stats] [--start START] [--end END]
                [--allow-duplicates] [--no-cache] [--force-retrain]
+               [--reinforce] [--reward REWARD]
+               [--load-model LOAD_MODEL] [--save-model SAVE_MODEL]
 
 Generate Finnish or Swedish names using Markov chains
 
@@ -108,6 +121,15 @@ optional arguments:
   --allow-duplicates    Allow generating names that already exist in the training data
   --no-cache            Disable model caching (always retrain; do not read/write cache)
   --force-retrain       Force retraining and overwrite any existing cached model
+  --reinforce, -R       Enable interactive reinforcement learning (accept/reject each generated name)
+  --reward REWARD       Base reinforcement reward magnitude; acceptance applies +reward
+                        and rejection applies -reward to the Markov transition counts (default: 1)
+  --load-model LOAD_MODEL
+                        Path to a custom pretrained Markov model JSON file to load instead
+                        of training from CSV data
+  --save-model SAVE_MODEL
+                        Path to save the trained/reinforced Markov model as a JSON file
+                        (custom pretrained model)
 ```
 
 ## Examples
@@ -168,6 +190,22 @@ Model Statistics:
 - **Model Caching**: Trains a model once per (language, gender, order, dataset) combination
   and then reuses the cached model on subsequent runs unless `--no-cache` or `--force-retrain`
   are used
+  
+- **Interactive Reinforcement Learning**:
+  - Use `--reinforce` to enter an interactive loop where the program suggests one name at a time.
+  - For each suggestion, type `a` to accept, `r` to reject, or `q` to quit.
+  - The `--reward` option controls how strongly each piece of feedback shifts the underlying
+    Markov transition probabilities (acceptance applies +reward, rejection applies -reward).
+  - When caching is enabled, the adapted model can be stored back into the dataset-based cache;
+    you can also save it explicitly via `--save-model`.
+
+- **Custom Pretrained Models**:
+  - Use `--save-model PATH` to persist the current model (after training and optionally
+    reinforcement) as a JSON file.
+  - Use `--load-model PATH` to load such a custom pretrained model in a later run instead of
+    retraining from CSVs.
+  - When `--load-model` is used, the Markov chain order is taken from the saved model; the
+    `--order` argument is ignored in this case.
 
 ## Requirements
 

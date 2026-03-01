@@ -70,6 +70,39 @@ def parse_args() -> argparse.Namespace:
         action="store_true",
         help="Force retraining and overwrite any existing cached model",
     )
+    parser.add_argument(
+        "--reinforce",
+        "-R",
+        action="store_true",
+        help="Enable interactive reinforcement learning (accept/reject each generated name)",
+    )
+    parser.add_argument(
+        "--reward",
+        type=int,
+        default=1,
+        help=(
+            "Base reinforcement reward magnitude; acceptance applies +reward "
+            "and rejection applies -reward to the Markov transition counts"
+        ),
+    )
+    parser.add_argument(
+        "--load-model",
+        type=str,
+        default="",
+        help=(
+            "Path to a custom pretrained Markov model JSON file to load instead "
+            "of training from CSV data"
+        ),
+    )
+    parser.add_argument(
+        "--save-model",
+        type=str,
+        default="",
+        help=(
+            "Path to save the trained/reinforced Markov model as a JSON file "
+            "(custom pretrained model)"
+        ),
+    )
     return parser.parse_args()
 
 
@@ -261,23 +294,39 @@ def main() -> None:
 
     generator: MarkovNameGenerator
 
-    if use_cache and not args.force_retrain:
-        cached = _load_cached_model(cache_path, dataset_signature)
-        if cached is not None:
-            generator = cached
-            print(f"\nUsing cached model from {cache_path}")
-        else:
+    # Optional: load a custom pretrained model from JSON.
+    if args.load_model:
+        try:
+            generator = MarkovNameGenerator.load_from_json(args.load_model)
+            print(f"\nUsing custom pretrained model from {args.load_model}")
+        except Exception as e:  # pragma: no cover - user-facing error path
+            print(
+                f"\nWarning: Failed to load model from {args.load_model}: {e}. "
+                "Falling back to training from CSV data."
+            )
+            # Fallback to normal training path below.
+            generator = None  # type: ignore[assignment]
+    else:
+        generator = None  # type: ignore[assignment]
+
+    if generator is None:
+        if use_cache and not args.force_retrain:
+            cached = _load_cached_model(cache_path, dataset_signature)
+            if cached is not None:
+                generator = cached
+                print(f"\nUsing cached model from {cache_path}")
+            else:
+                generator = MarkovNameGenerator(order=args.order)
+                generator.train(all_names, all_weights)
+                _save_cached_model(generator, cache_path, dataset_signature)
+        elif use_cache and args.force_retrain:
             generator = MarkovNameGenerator(order=args.order)
             generator.train(all_names, all_weights)
             _save_cached_model(generator, cache_path, dataset_signature)
-    elif use_cache and args.force_retrain:
-        generator = MarkovNameGenerator(order=args.order)
-        generator.train(all_names, all_weights)
-        _save_cached_model(generator, cache_path, dataset_signature)
-    else:
-        # Caching disabled: always train a fresh model and do not persist it.
-        generator = MarkovNameGenerator(order=args.order)
-        generator.train(all_names, all_weights)
+        else:
+            # Caching disabled: always train a fresh model and do not persist it.
+            generator = MarkovNameGenerator(order=args.order)
+            generator.train(all_names, all_weights)
 
     if args.stats:
         stats = generator.get_stats()
@@ -291,6 +340,20 @@ def main() -> None:
         print(f"  Chain order: {stats['chain_order']}")
         print(f"  Average name length: {stats['average_name_length']:.1f}")
         print()
+
+    # Reinforcement-learning mode: interactive accept/reject loop.
+    if args.reinforce:
+        _run_reinforcement_session(
+            generator=generator,
+            args=args,
+            all_names=set(all_names),
+            finnish_prevalence=finnish_prevalence,
+            swedish_prevalence=swedish_prevalence,
+            cache_path=cache_path,
+            dataset_signature=dataset_signature,
+            use_cache=use_cache,
+        )
+        return
 
     # Display generation info.
     duplicate_info = " (including training data)" if args.allow_duplicates else ""
@@ -344,6 +407,133 @@ def main() -> None:
         print(
             f"\nNote: Only generated {len(generated_names)} names after {max_attempts} attempts."
         )
+
+    # Optionally persist the model as a custom pretrained JSON file.
+    if args.save_model:
+        try:
+            generator.save_to_json(args.save_model)
+            print(f"\nSaved model to {args.save_model}")
+        except Exception as e:  # pragma: no cover - user-facing error path
+            print(f"\nError saving model to {args.save_model}: {e}")
+
+
+def _run_reinforcement_session(
+    generator: MarkovNameGenerator,
+    args: argparse.Namespace,
+    all_names: Set[str],
+    finnish_prevalence: Dict[str, int],
+    swedish_prevalence: Dict[str, int],
+    cache_path: str,
+    dataset_signature: str,
+    use_cache: bool,
+) -> None:
+    """
+    Interactive reinforcement-learning loop: generate one name at a time and
+    apply user accept/reject feedback to the model.
+    """
+    print("\nInteractive reinforcement learning mode")
+    print("--------------------------------------")
+    print(
+        "For each suggested name, type 'a' to accept, 'r' to reject, or 'q' to quit."
+    )
+    print(f"Reward magnitude: {args.reward} (accept: +{args.reward}, reject: -{args.reward})")
+
+    max_accepts = args.count if args.count > 0 else None
+    accepted = 0
+    proposed = 0
+
+    while True:
+        if max_accepts is not None and accepted >= max_accepts:
+            print(f"\nReached target of {max_accepts} accepted names.")
+            break
+
+        try:
+            name = generator.generate(
+                max_length=args.max_length,
+                min_length=args.min_length,
+                start_with=args.start,
+                end_with=args.end,
+            )
+        except ValueError as e:  # pragma: no cover - user-facing error path
+            print(f"\nError during generation: {e}")
+            break
+
+        if not name:
+            print("\nNo name could be generated. Stopping reinforcement session.")
+            break
+
+        # Respect duplicate handling: skip names from the training data when
+        # duplicates are not allowed.
+        if not args.allow_duplicates and name in all_names:
+            continue
+
+        proposed += 1
+        line = f"{proposed:2d}. {name}"
+        if args.allow_duplicates:
+            parts = []
+            if name in finnish_prevalence:
+                parts.append(f"FI: {finnish_prevalence[name]:,}")
+            if name in swedish_prevalence:
+                parts.append(f"SE: {swedish_prevalence[name]:,}")
+            if parts:
+                line += "  (" + " | ".join(parts) + ")"
+        print("\n" + line)
+
+        # Prompt for feedback.
+        while True:
+            choice = input("[a]ccept / [r]eject / [q]uit > ").strip().lower()
+            if choice in {"a", "y", "yes"}:
+                generator.reinforce_accept(name, weight=args.reward)
+                accepted += 1
+                print(f"Accepted '{name}' (total accepted: {accepted})")
+                break
+            if choice in {"r", "n", "no"}:
+                generator.reinforce_reject(name, weight=args.reward)
+                print(f"Rejected '{name}'")
+                break
+            if choice in {"q", "quit"}:
+                print("\nEnding reinforcement session.")
+                # After quitting, persist any updates and return.
+                _finalize_reinforcement_session(
+                    generator,
+                    args,
+                    cache_path,
+                    dataset_signature,
+                    use_cache,
+                )
+                return
+            print("Please enter 'a' to accept, 'r' to reject, or 'q' to quit.")
+
+    _finalize_reinforcement_session(
+        generator,
+        args,
+        cache_path,
+        dataset_signature,
+        use_cache,
+    )
+
+
+def _finalize_reinforcement_session(
+    generator: MarkovNameGenerator,
+    args: argparse.Namespace,
+    cache_path: str,
+    dataset_signature: str,
+    use_cache: bool,
+) -> None:
+    """Persist model updates after a reinforcement session."""
+    # Save to dataset-based cache if enabled and we are not using an explicit
+    # custom pretrained model as the primary source.
+    if use_cache and not args.no_cache and not args.load_model:
+        _save_cached_model(generator, cache_path, dataset_signature)
+        print(f"\nUpdated cached model saved to {cache_path}")
+
+    # Optionally persist the model as a custom pretrained JSON file.
+    if args.save_model:
+        try:
+            generator.save_to_json(args.save_model)
+            print(f"Custom pretrained model saved to {args.save_model}")
+        except Exception as e:  # pragma: no cover - user-facing error path
+            print(f"Error saving custom pretrained model to {args.save_model}: {e}")
 
 
 __all__ = ["main", "parse_args"]

@@ -51,6 +51,61 @@ class MarkovNameGenerator:
                     next_char = padded_name[i + self.order]
                     self.chains[context][next_char] += weight
 
+    def apply_feedback(self, name: str, reward: int) -> None:
+        """
+        Apply reinforcement feedback to the model for a single name.
+
+        Positive rewards strengthen the transitions that produced the name,
+        negative rewards weaken them. A reward of zero is a no-op.
+
+        Args:
+            name: The generated name to reinforce.
+            reward: Signed reward to apply to each transition in the name.
+        """
+        if reward == 0:
+            return
+
+        if not self._is_valid_name(name):
+            return
+
+        clean_name = self._clean_name(name)
+        padded_name = "^" * self.order + clean_name.lower() + "$"
+
+        for i in range(len(padded_name) - self.order):
+            context = padded_name[i : i + self.order]
+            next_char = padded_name[i + self.order]
+            counter = self.chains[context]
+            counter[next_char] += reward
+            if counter[next_char] <= 0:
+                del counter[next_char]
+                if not counter:
+                    # Remove empty contexts to keep the model compact.
+                    del self.chains[context]
+
+        if reward > 0:
+            # Track positively reinforced names for statistics.
+            self.names.append(clean_name)
+
+    def reinforce_accept(self, name: str, weight: int = 1) -> None:
+        """
+        Reinforce the model to make a given name more likely in the future.
+
+        Args:
+            name: The accepted name.
+            weight: Reward magnitude to apply (default: 1).
+        """
+        self.apply_feedback(name, reward=weight)
+
+    def reinforce_reject(self, name: str, weight: int = 1) -> None:
+        """
+        Reinforce the model to make a given name less likely in the future.
+
+        Args:
+            name: The rejected name.
+            weight: Penalty magnitude to apply (default: 1).
+        """
+        self.apply_feedback(name, reward=-weight)
+
     def generate(
         self,
         max_length: int = 12,
