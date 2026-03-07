@@ -193,7 +193,7 @@ Model Statistics:
   
 - **Interactive Reinforcement Learning**:
   - Use `--reinforce` to enter an interactive loop where the program suggests one name at a time.
-  - For each suggestion, type `a` to accept, `r` to reject, or `q` to quit.
+  - For each suggestion, type `a` to accept, `r` to reject, `s` to skip, or `q` to quit.
   - The `--reward` option controls how strongly each piece of feedback shifts the underlying
     Markov transition probabilities (acceptance applies +reward, rejection applies -reward).
   - Reinforcement updates are only persisted when you explicitly provide `--save-model` to write

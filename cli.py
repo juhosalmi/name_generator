@@ -434,7 +434,7 @@ def _run_reinforcement_session(
     print("\nInteractive reinforcement learning mode")
     print("--------------------------------------")
     print(
-        "For each suggested name, type 'a' to accept, 'r' to reject, or 'q' to quit."
+        "For each suggested name, type 'a' to accept, 'r' to reject, 's' to skip, or 'q' to quit."
     )
     print(f"Reward magnitude: {args.reward} (accept: +{args.reward}, reject: -{args.reward})")
 
@@ -481,7 +481,11 @@ def _run_reinforcement_session(
 
         # Prompt for feedback.
         while True:
-            choice = input("[a]ccept / [r]eject / [q]uit > ").strip().lower()
+            choice = input("[a]ccept / [r]eject / [s]kip / [q]uit > ").strip().lower()
+            # Treat empty input (just Enter) as a skip with no reinforcement.
+            if choice == "":
+                print(f"Skipped '{name}'")
+                break
             if choice in {"a", "y", "yes"}:
                 generator.reinforce_accept(name, weight=args.reward)
                 accepted += 1
@@ -490,6 +494,9 @@ def _run_reinforcement_session(
             if choice in {"r", "n", "no"}:
                 generator.reinforce_reject(name, weight=args.reward)
                 print(f"Rejected '{name}'")
+                break
+            if choice in {"s", "skip"}:
+                print(f"Skipped '{name}'")
                 break
             if choice in {"q", "quit"}:
                 print("\nEnding reinforcement session.")
