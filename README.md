@@ -196,8 +196,8 @@ Model Statistics:
   - For each suggestion, type `a` to accept, `r` to reject, or `q` to quit.
   - The `--reward` option controls how strongly each piece of feedback shifts the underlying
     Markov transition probabilities (acceptance applies +reward, rejection applies -reward).
-  - When caching is enabled, the adapted model can be stored back into the dataset-based cache;
-    you can also save it explicitly via `--save-model`.
+  - Reinforcement updates are only persisted when you explicitly provide `--save-model` to write
+    the current model to a JSON file.
 
 - **Custom Pretrained Models**:
   - Use `--save-model PATH` to persist the current model (after training and optionally

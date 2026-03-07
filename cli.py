@@ -520,13 +520,12 @@ def _finalize_reinforcement_session(
     dataset_signature: str,
     use_cache: bool,
 ) -> None:
-    """Persist model updates after a reinforcement session."""
-    # Save to dataset-based cache if enabled and we are not using an explicit
-    # custom pretrained model as the primary source.
-    if use_cache and not args.no_cache and not args.load_model:
-        _save_cached_model(generator, cache_path, dataset_signature)
-        print(f"\nUpdated cached model saved to {cache_path}")
+    """Persist model updates after a reinforcement session.
 
+    When reinforcement learning is enabled, we intentionally do NOT update the
+    dataset-based cached model. Persisting RL-adapted models is only done via
+    an explicit --save-model path.
+    """
     # Optionally persist the model as a custom pretrained JSON file.
     if args.save_model:
         try:
