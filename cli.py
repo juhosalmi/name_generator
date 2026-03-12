@@ -450,7 +450,9 @@ def _run_reinforcement_session(
     seen_names: Set[str] = set()
     existing_feedback = getattr(generator, "feedback", {}) or {}
     if isinstance(existing_feedback, dict):
-        seen_names.update(existing_feedback.keys())
+        for names in existing_feedback.values():
+            for n in names:
+                seen_names.add(n)
 
     while True:
         if max_accepts is not None and accepted >= max_accepts:
@@ -500,8 +502,8 @@ def _run_reinforcement_session(
             if choice == "":
                 print(f"Skipped '{name}'")
                 if not hasattr(generator, "feedback"):
-                    generator.feedback = {}
-                generator.feedback[name] = "skipped"
+                    generator.feedback = {"accepted": set(), "skipped": set(), "rejected": set()}
+                generator.feedback.setdefault("skipped", set()).add(name)
                 seen_names.add(name)
                 break
             if choice in {"a", "y", "yes"}:
@@ -509,23 +511,23 @@ def _run_reinforcement_session(
                 accepted += 1
                 print(f"Accepted '{name}' (total accepted: {accepted})")
                 if not hasattr(generator, "feedback"):
-                    generator.feedback = {}
-                generator.feedback[name] = "accepted"
+                    generator.feedback = {"accepted": set(), "skipped": set(), "rejected": set()}
+                generator.feedback.setdefault("accepted", set()).add(name)
                 seen_names.add(name)
                 break
             if choice in {"r", "n", "no"}:
                 generator.reinforce_reject(name, reward=args.reward)
                 print(f"Rejected '{name}'")
                 if not hasattr(generator, "feedback"):
-                    generator.feedback = {}
-                generator.feedback[name] = "rejected"
+                    generator.feedback = {"accepted": set(), "skipped": set(), "rejected": set()}
+                generator.feedback.setdefault("rejected", set()).add(name)
                 seen_names.add(name)
                 break
             if choice in {"s", "skip"}:
                 print(f"Skipped '{name}'")
                 if not hasattr(generator, "feedback"):
-                    generator.feedback = {}
-                generator.feedback[name] = "skipped"
+                    generator.feedback = {"accepted": set(), "skipped": set(), "rejected": set()}
+                generator.feedback.setdefault("skipped", set()).add(name)
                 seen_names.add(name)
                 break
             if choice in {"q", "quit"}:
