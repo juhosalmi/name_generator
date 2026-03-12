@@ -21,6 +21,9 @@ class MarkovNameGenerator:
         self.order = order
         self.chains = defaultdict(Counter)
         self.names: List[str] = []
+        # Feedback labels from reinforcement learning sessions:
+        # name -> "accepted" | "rejected" | "skipped"
+        self.feedback: Dict[str, str] = {}
 
     def train(self, names: List[str], weights: Optional[List[int]] = None) -> None:
         """
@@ -263,6 +266,7 @@ class MarkovNameGenerator:
             "chains": {
                 context: dict(counter) for context, counter in self.chains.items()
             },
+            "feedback": self.feedback,
         }
 
     @classmethod
@@ -279,6 +283,13 @@ class MarkovNameGenerator:
         instance.chains = defaultdict(Counter)
         for context, next_chars in chains_data.items():
             instance.chains[context] = Counter(next_chars)
+
+        # Load any stored reinforcement feedback labels.
+        feedback = data.get("feedback", {})
+        if isinstance(feedback, dict):
+            instance.feedback = {str(k): str(v) for k, v in feedback.items()}
+        else:
+            instance.feedback = {}
 
         return instance
 

@@ -445,6 +445,13 @@ def _run_reinforcement_session(
     accepted = 0
     proposed = 0
 
+    # Track names that have already received feedback in any RL session so we
+    # do not ask about them again, even after loading a custom model.
+    seen_names: Set[str] = set()
+    existing_feedback = getattr(generator, "feedback", {}) or {}
+    if isinstance(existing_feedback, dict):
+        seen_names.update(existing_feedback.keys())
+
     while True:
         if max_accepts is not None and accepted >= max_accepts:
             print(f"\nReached target of {max_accepts} accepted names.")
@@ -470,6 +477,10 @@ def _run_reinforcement_session(
         if not args.allow_duplicates and name in all_names:
             continue
 
+        # Do not ask again about names that already have feedback recorded.
+        if name in seen_names:
+            continue
+
         proposed += 1
         line = f"{proposed:2d}. {name}"
         if args.allow_duplicates:
@@ -488,18 +499,34 @@ def _run_reinforcement_session(
             # Treat empty input (just Enter) as a skip with no reinforcement.
             if choice == "":
                 print(f"Skipped '{name}'")
+                if not hasattr(generator, "feedback"):
+                    generator.feedback = {}
+                generator.feedback[name] = "skipped"
+                seen_names.add(name)
                 break
             if choice in {"a", "y", "yes"}:
                 generator.reinforce_accept(name, reward=args.reward)
                 accepted += 1
                 print(f"Accepted '{name}' (total accepted: {accepted})")
+                if not hasattr(generator, "feedback"):
+                    generator.feedback = {}
+                generator.feedback[name] = "accepted"
+                seen_names.add(name)
                 break
             if choice in {"r", "n", "no"}:
                 generator.reinforce_reject(name, reward=args.reward)
                 print(f"Rejected '{name}'")
+                if not hasattr(generator, "feedback"):
+                    generator.feedback = {}
+                generator.feedback[name] = "rejected"
+                seen_names.add(name)
                 break
             if choice in {"s", "skip"}:
                 print(f"Skipped '{name}'")
+                if not hasattr(generator, "feedback"):
+                    generator.feedback = {}
+                generator.feedback[name] = "skipped"
+                seen_names.add(name)
                 break
             if choice in {"q", "quit"}:
                 print("\nEnding reinforcement session.")
