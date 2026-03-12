@@ -122,8 +122,8 @@ optional arguments:
   --no-cache            Disable model caching (always retrain; do not read/write cache)
   --force-retrain       Force retraining and overwrite any existing cached model
   --reinforce, -R       Enable interactive reinforcement learning (accept/reject each generated name)
-  --reward REWARD       Base reinforcement reward magnitude; acceptance applies +reward
-                        and rejection applies -reward to the Markov transition counts (default: 1)
+  --reward REWARD       Reinforcement reward factor (float); acceptance multiplies transition
+                        weights by this value, rejection divides by this value (default: 2.0)
   --load-model LOAD_MODEL
                         Path to a custom pretrained Markov model JSON file to load instead
                         of training from CSV data
@@ -194,8 +194,9 @@ Model Statistics:
 - **Interactive Reinforcement Learning**:
   - Use `--reinforce` to enter an interactive loop where the program suggests one name at a time.
   - For each suggestion, type `a` to accept, `r` to reject, `s` to skip, or `q` to quit.
-  - The `--reward` option controls how strongly each piece of feedback shifts the underlying
-    Markov transition probabilities (acceptance applies +reward, rejection applies -reward).
+  - The `--reward` option is a multiplicative factor that controls how strongly each piece of
+    feedback shifts the underlying Markov transition probabilities (acceptance multiplies the
+    relevant transition weights by this factor, rejection divides them by this factor).
   - Reinforcement updates are only persisted when you explicitly provide `--save-model` to write
     the current model to a JSON file.
 

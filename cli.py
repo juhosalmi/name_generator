@@ -78,11 +78,11 @@ def parse_args() -> argparse.Namespace:
     )
     parser.add_argument(
         "--reward",
-        type=int,
-        default=1,
+        type=float,
+        default=2.0,
         help=(
-            "Base reinforcement reward magnitude; acceptance applies +reward "
-            "and rejection applies -reward to the Markov transition counts"
+            "Reinforcement reward factor; acceptance multiplies transition "
+            "weights by this value, rejection divides by this value"
         ),
     )
     parser.add_argument(
@@ -436,7 +436,10 @@ def _run_reinforcement_session(
     print(
         "For each suggested name, type 'a' to accept, 'r' to reject, 's' to skip, or 'q' to quit."
     )
-    print(f"Reward magnitude: {args.reward} (accept: +{args.reward}, reject: -{args.reward})")
+    print(
+        f"Reward factor: {args.reward} "
+        f"(accept: ×{args.reward}, reject: ÷{args.reward})"
+    )
 
     max_accepts = args.count if args.count > 0 else None
     accepted = 0
@@ -487,12 +490,12 @@ def _run_reinforcement_session(
                 print(f"Skipped '{name}'")
                 break
             if choice in {"a", "y", "yes"}:
-                generator.reinforce_accept(name, weight=args.reward)
+                generator.reinforce_accept(name, reward=args.reward)
                 accepted += 1
                 print(f"Accepted '{name}' (total accepted: {accepted})")
                 break
             if choice in {"r", "n", "no"}:
-                generator.reinforce_reject(name, weight=args.reward)
+                generator.reinforce_reject(name, reward=args.reward)
                 print(f"Rejected '{name}'")
                 break
             if choice in {"s", "skip"}:

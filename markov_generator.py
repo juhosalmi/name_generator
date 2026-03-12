@@ -51,18 +51,20 @@ class MarkovNameGenerator:
                     next_char = padded_name[i + self.order]
                     self.chains[context][next_char] += weight
 
-    def apply_feedback(self, name: str, reward: int) -> None:
+    def apply_feedback(self, name: str, factor: float) -> None:
         """
         Apply reinforcement feedback to the model for a single name.
 
-        Positive rewards strengthen the transitions that produced the name,
-        negative rewards weaken them. A reward of zero is a no-op.
+        A factor greater than 1.0 strengthens the transitions that produced the
+        name, while a factor between 0 and 1.0 weakens them. A factor of 1.0
+        leaves the model unchanged.
 
         Args:
             name: The generated name to reinforce.
-            reward: Signed reward to apply to each transition in the name.
+            factor: Multiplicative factor to apply to each transition in the
+                    name. Must be positive and non-zero.
         """
-        if reward == 0:
+        if factor == 1.0 or factor <= 0.0:
             return
 
         if not self._is_valid_name(name):
@@ -75,36 +77,47 @@ class MarkovNameGenerator:
             context = padded_name[i : i + self.order]
             next_char = padded_name[i + self.order]
             counter = self.chains[context]
-            counter[next_char] += reward
-            if counter[next_char] <= 0:
+            current = float(counter.get(next_char, 0.0)) or 1.0
+            new_value = current * factor
+            if new_value <= 0.0:
                 del counter[next_char]
                 if not counter:
                     # Remove empty contexts to keep the model compact.
                     del self.chains[context]
+            else:
+                counter[next_char] = new_value
 
-        if reward > 0:
+        if factor > 1.0:
             # Track positively reinforced names for statistics.
             self.names.append(clean_name)
 
-    def reinforce_accept(self, name: str, weight: int = 1) -> None:
+    def reinforce_accept(self, name: str, reward: float = 1.0) -> None:
         """
         Reinforce the model to make a given name more likely in the future.
 
         Args:
             name: The accepted name.
-            weight: Reward magnitude to apply (default: 1).
+            reward: Reward factor to apply (default: 1.0). Values > 1.0 make
+                    the name more likely; values <= 0 are ignored.
         """
-        self.apply_feedback(name, reward=weight)
+        if reward <= 0.0:
+            return
+        self.apply_feedback(name, factor=reward)
 
-    def reinforce_reject(self, name: str, weight: int = 1) -> None:
+    def reinforce_reject(self, name: str, reward: float = 1.0) -> None:
         """
         Reinforce the model to make a given name less likely in the future.
 
         Args:
             name: The rejected name.
-            weight: Penalty magnitude to apply (default: 1).
+            reward: Penalty factor to apply (default: 1.0). Values > 1.0 make
+                    the name less likely by dividing the transition weights by
+                    this factor; values <= 0 are ignored.
         """
-        self.apply_feedback(name, reward=-weight)
+        if reward <= 0.0:
+            return
+        # Dividing by the reward factor weakens the transitions.
+        self.apply_feedback(name, factor=1.0 / reward)
 
     def generate(
         self,
